@@ -102,7 +102,7 @@ jobs:
           done
 
       - name: Run migrations and seed
-        run: composer run migrate:fresh:seed
+        run: composer run migrate
 
       - name: Run test suite
         run: composer run test:all
