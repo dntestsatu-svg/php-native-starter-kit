@@ -101,7 +101,7 @@ jobs:
             until (echo > /dev/tcp/127.0.0.1/$port) >/dev/null 2>&1; do sleep 1; done
           done
 
-      - name: Run migrations and seed
+      - name: Run migrations
         run: composer run migrate
 
       - name: Run test suite
