@@ -18,6 +18,11 @@
         <?= csrf_field(); ?>
         <input type="hidden" name="user_id" value="<?= e((string) ($targetUser['id'] ?? '')); ?>">
 
+        <label for="username" style="display:block;margin:12px 0 6px;">Username</label>
+        <input id="username" name="username" type="text" required
+            value="<?= e((string) ($targetUser['username'] ?? '')); ?>"
+            style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #d1d5db;border-radius:8px;">
+
         <label for="name" style="display:block;margin:12px 0 6px;">Name</label>
         <input id="name" name="name" type="text" required
             value="<?= e((string) ($targetUser['name'] ?? '')); ?>"

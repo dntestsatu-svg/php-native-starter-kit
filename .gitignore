@@ -2,3 +2,4 @@
 /vendor/
 /storage/cache/*
 !/storage/cache/.gitkeep
+/.phpunit.result.cache

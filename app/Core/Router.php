@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Mugiew\StarterKit\Core;
 
+use Mugiew\StarterKit\Http\Requests\FormRequest;
+use Mugiew\StarterKit\Http\Requests\Validation\RequestValidationException;
 use ReflectionFunction;
 use ReflectionMethod;
 use RuntimeException;
@@ -115,6 +117,9 @@ final class Router
             );
 
             return $pipeline($request);
+        } catch (RequestValidationException $exception) {
+            flash('error', $exception->getMessage());
+            return Response::redirect($exception->redirectPath());
         } catch (Throwable $exception) {
             $message = 'Internal Server Error';
 
@@ -166,6 +171,12 @@ final class Router
 
                 if ($name === Request::class) {
                     $arguments[] = $request;
+                    continue;
+                }
+
+                if (is_subclass_of($name, FormRequest::class)) {
+                    /** @var class-string<FormRequest> $name */
+                    $arguments[] = $name::fromRequest($request);
                     continue;
                 }
 

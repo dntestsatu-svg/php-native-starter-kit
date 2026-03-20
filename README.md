@@ -10,6 +10,8 @@ Minimal, production-minded MVC scaffold for native PHP 8.5 with:
 - Auth example with `guest` and `auth` route middleware
 - Reusable page layouts: `app` and `dashboard`
 - Dashboard-protected user CRUD example
+- Reusable request validation layer (`app/Http/Requests` + `Validation`)
+- PHPUnit CRUD unit tests (`tests/Unit/Models/UserRepositoryTest.php`)
 
 ## Requirements
 
@@ -63,3 +65,9 @@ public/
 - Sessions are configured to run on Redis only.
 - CSRF token checks run for mutating requests (`POST`, `PUT`, `PATCH`, `DELETE`).
 - CSRF tokens are one-time and TTL-bound in Redis.
+
+## Run Tests
+
+```bash
+vendor/bin/phpunit
+```

@@ -23,22 +23,41 @@ final class UserRepository
             return;
         }
 
-        $this->connection->exec(
-            'CREATE TABLE IF NOT EXISTS ' . self::TABLE . ' (
-                id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-                username VARCHAR(255) NOT NULL,
-                name VARCHAR(255) NOT NULL,
-                email VARCHAR(255) NOT NULL,
-                email_verified_at TIMESTAMP NULL DEFAULT NULL,
-                password VARCHAR(255) NOT NULL,
-                remember_token VARCHAR(100) NULL,
-                role ENUM(\'dev\', \'superadmin\', \'admin\', \'user\') NOT NULL DEFAULT \'user\',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                UNIQUE KEY users_username_unique (username),
-                UNIQUE KEY users_email_unique (email)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
-        );
+        $driver = (string) $this->connection->getAttribute(PDO::ATTR_DRIVER_NAME);
+
+        if ($driver === 'sqlite') {
+            $this->connection->exec(
+                'CREATE TABLE IF NOT EXISTS ' . self::TABLE . ' (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT NOT NULL UNIQUE,
+                    name TEXT NOT NULL,
+                    email TEXT NOT NULL UNIQUE,
+                    email_verified_at TEXT NULL,
+                    password TEXT NOT NULL,
+                    remember_token TEXT NULL,
+                    role TEXT NOT NULL DEFAULT \'user\',
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )'
+            );
+        } else {
+            $this->connection->exec(
+                'CREATE TABLE IF NOT EXISTS ' . self::TABLE . ' (
+                    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                    username VARCHAR(255) NOT NULL,
+                    name VARCHAR(255) NOT NULL,
+                    email VARCHAR(255) NOT NULL,
+                    email_verified_at TIMESTAMP NULL DEFAULT NULL,
+                    password VARCHAR(255) NOT NULL,
+                    remember_token VARCHAR(100) NULL,
+                    role ENUM(\'dev\', \'superadmin\', \'admin\', \'user\') NOT NULL DEFAULT \'user\',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    UNIQUE KEY users_username_unique (username),
+                    UNIQUE KEY users_email_unique (email)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+            );
+        }
 
         $this->tableReady = true;
     }
@@ -147,17 +166,39 @@ final class UserRepository
         return is_array($statement->fetch());
     }
 
-    public function update(int $id, string $name, string $email, ?string $hashedPassword = null): bool
+    public function usernameExistsForAnotherUser(string $username, int $exceptId): bool
+    {
+        $this->ensureTable();
+
+        $statement = $this->connection->prepare(
+            'SELECT id FROM ' . self::TABLE . ' WHERE username = :username AND id <> :id LIMIT 1'
+        );
+        $statement->execute([
+            'username' => $username,
+            'id' => $exceptId,
+        ]);
+
+        return is_array($statement->fetch());
+    }
+
+    public function update(
+        int $id,
+        string $username,
+        string $name,
+        string $email,
+        ?string $hashedPassword = null
+    ): bool
     {
         $this->ensureTable();
 
         if ($hashedPassword !== null) {
             $statement = $this->connection->prepare(
-                'UPDATE ' . self::TABLE . ' SET name = :name, email = :email, password = :password WHERE id = :id'
+                'UPDATE ' . self::TABLE . ' SET username = :username, name = :name, email = :email, password = :password WHERE id = :id'
             );
 
             return $statement->execute([
                 'id' => $id,
+                'username' => $username,
                 'name' => $name,
                 'email' => $email,
                 'password' => $hashedPassword,
@@ -165,11 +206,12 @@ final class UserRepository
         }
 
         $statement = $this->connection->prepare(
-            'UPDATE ' . self::TABLE . ' SET name = :name, email = :email WHERE id = :id'
+            'UPDATE ' . self::TABLE . ' SET username = :username, name = :name, email = :email WHERE id = :id'
         );
 
         return $statement->execute([
             'id' => $id,
+            'username' => $username,
             'name' => $name,
             'email' => $email,
         ]);

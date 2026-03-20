@@ -27,6 +27,7 @@
             <thead>
                 <tr style="background:#f8fafc;text-align:left;">
                     <th style="padding:10px;border-bottom:1px solid #e2e8f0;">ID</th>
+                    <th style="padding:10px;border-bottom:1px solid #e2e8f0;">Username</th>
                     <th style="padding:10px;border-bottom:1px solid #e2e8f0;">Name</th>
                     <th style="padding:10px;border-bottom:1px solid #e2e8f0;">Email</th>
                     <th style="padding:10px;border-bottom:1px solid #e2e8f0;">Actions</th>
@@ -35,12 +36,13 @@
             <tbody>
                 <?php if (empty($users)): ?>
                     <tr>
-                        <td colspan="4" style="padding:12px;">No users found.</td>
+                        <td colspan="5" style="padding:12px;">No users found.</td>
                     </tr>
                 <?php else: ?>
                     <?php foreach ($users as $listedUser): ?>
                         <tr>
                             <td style="padding:10px;border-bottom:1px solid #f1f5f9;"><?= e((string) ($listedUser['id'] ?? '')); ?></td>
+                            <td style="padding:10px;border-bottom:1px solid #f1f5f9;"><?= e((string) ($listedUser['username'] ?? '')); ?></td>
                             <td style="padding:10px;border-bottom:1px solid #f1f5f9;"><?= e((string) ($listedUser['name'] ?? '')); ?></td>
                             <td style="padding:10px;border-bottom:1px solid #f1f5f9;"><?= e((string) ($listedUser['email'] ?? '')); ?></td>
                             <td style="padding:10px;border-bottom:1px solid #f1f5f9;">
