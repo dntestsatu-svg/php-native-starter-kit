@@ -21,6 +21,11 @@
             "Mugiew\\StarterKit\\": "app/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "Mugiew\\StarterKit\\": "tests/"
+        }
+    },
     "authors": [
         {
             "name": "Mugiew Galeano"
