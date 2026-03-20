@@ -14,8 +14,8 @@ use Mugiew\StarterKit\Http\Middlewares\CsrfMiddleware;
 use Mugiew\StarterKit\Models\UserRepository;
 use Mugiew\StarterKit\Services\Auth\AuthService;
 use Mugiew\StarterKit\Services\Security\CsrfManager;
+use Mugiew\StarterKit\Tests\Support\InMemoryRedisClient;
 use PDO;
-use Predis\Client;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -242,43 +242,5 @@ final class SecurityHardeningTest extends TestCase
     private static function basePath(): string
     {
         return dirname(__DIR__, 3);
-    }
-}
-
-final class InMemoryRedisClient extends Client
-{
-    /**
-     * @var array<string, string>
-     */
-    private array $store = [];
-
-    public function __construct() {}
-
-    public function setex($key, $ttl, $value): bool
-    {
-        $this->store[(string) $key] = (string) $value;
-        return true;
-    }
-
-    public function del($keys): int
-    {
-        $deleted = 0;
-
-        if (!is_array($keys)) {
-            $keys = [$keys];
-        }
-
-        foreach ($keys as $key) {
-            $normalized = (string) $key;
-
-            if (!array_key_exists($normalized, $this->store)) {
-                continue;
-            }
-
-            unset($this->store[$normalized]);
-            $deleted++;
-        }
-
-        return $deleted;
     }
 }

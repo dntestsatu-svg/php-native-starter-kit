@@ -6,6 +6,7 @@ Minimal, production-minded MVC scaffold for native PHP 8.5 with:
 - MySQL configuration from `.env` with typed PDO options
 - Redis-backed sessions using `predis/predis`
 - Redis-backed CSRF token issuance and verification
+- Redis-backed credential-aware rate limiting for login and registration
 - Memcached caching for compiled environment + configuration payloads
 - Auth example with `guest` and `auth` route middleware
 - Reusable page layouts: `app` and `dashboard`
@@ -65,6 +66,7 @@ public/
 - Sessions are configured to run on Redis only.
 - CSRF token checks run for mutating requests (`POST`, `PUT`, `PATCH`, `DELETE`).
 - CSRF tokens are one-time and TTL-bound in Redis.
+- Login and registration are rate-limited by account identifiers (email/username), not IP address.
 
 ## Run Tests
 

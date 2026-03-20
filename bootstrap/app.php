@@ -9,6 +9,7 @@ use Mugiew\StarterKit\Core\View;
 use Mugiew\StarterKit\Http\Middlewares\AuthMiddleware;
 use Mugiew\StarterKit\Http\Middlewares\CsrfMiddleware;
 use Mugiew\StarterKit\Http\Middlewares\GuestMiddleware;
+use Mugiew\StarterKit\Http\Middlewares\RateLimiterMiddleware;
 use Mugiew\StarterKit\Models\UserRepository;
 use Mugiew\StarterKit\Services\Auth\AuthService;
 use Mugiew\StarterKit\Services\Cache\MemcachedStore;
@@ -48,6 +49,10 @@ $container->singleton(SessionManager::class, static fn (Container $container): S
 $container->singleton(CsrfManager::class, static fn (Container $container): CsrfManager => new CsrfManager($container->get(Client::class), $config['security']['csrf']));
 $container->singleton(AuthMiddleware::class, static fn (Container $container): AuthMiddleware => new AuthMiddleware($container->get(AuthService::class)));
 $container->singleton(GuestMiddleware::class, static fn (Container $container): GuestMiddleware => new GuestMiddleware($container->get(AuthService::class)));
+$container->singleton(RateLimiterMiddleware::class, static fn (Container $container): RateLimiterMiddleware => new RateLimiterMiddleware(
+    $container->get(Client::class),
+    $config['security']['rate_limit'] ?? []
+));
 $container->singleton(CsrfMiddleware::class, static fn (Container $container): CsrfMiddleware => new CsrfMiddleware(
     $container->get(CsrfManager::class),
     $container->get(View::class),
