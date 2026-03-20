@@ -71,5 +71,5 @@ public/
 ## Run Tests
 
 ```bash
-vendor/bin/phpunit
+composer run test:all
 ```
