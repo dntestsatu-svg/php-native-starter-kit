@@ -1,0 +1,83 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use Mugiew\StarterKit\Database\Migrations\MigrationRunner;
+use Mugiew\StarterKit\Database\Seeders\DatabaseSeeder;
+use Mugiew\StarterKit\Services\Config\ConfigRepository;
+use Mugiew\StarterKit\Services\Config\EnvironmentLoader;
+use Mugiew\StarterKit\Services\Database\EloquentBootstrap;
+
+$basePath = dirname(__DIR__);
+
+require_once $basePath . '/vendor/autoload.php';
+
+$command = $argv[1] ?? 'help';
+$options = array_values(array_slice($argv, 2));
+$seed = in_array('--seed', $options, true);
+
+try {
+    $environment = (new EnvironmentLoader($basePath))->load();
+    $config = (new ConfigRepository($environment->env, $environment->cache))->all();
+    $capsule = (new EloquentBootstrap($config['database'] ?? []))->boot();
+
+    $runner = new MigrationRunner(
+        $capsule,
+        $basePath . DIRECTORY_SEPARATOR . 'database' . DIRECTORY_SEPARATOR . 'migrations',
+        new DatabaseSeeder()
+    );
+
+    switch ($command) {
+        case 'migrate':
+            $result = $runner->migrate();
+
+            foreach ($result['migrated'] as $migration) {
+                echo sprintf("[migrated] %s%s", $migration, PHP_EOL);
+            }
+
+            if ($result['migrated'] === []) {
+                echo "Nothing to migrate." . PHP_EOL;
+            }
+
+            if ($seed) {
+                $runner->seed();
+                echo "Database seeded." . PHP_EOL;
+            }
+
+            exit(0);
+
+        case 'migrate:fresh':
+            $result = $runner->fresh($seed);
+
+            foreach ($result['migrated'] as $migration) {
+                echo sprintf("[migrated] %s%s", $migration, PHP_EOL);
+            }
+
+            if ($result['migrated'] === []) {
+                echo "Database is fresh and already up to date." . PHP_EOL;
+            }
+
+            if ($result['seeded']) {
+                echo "Database seeded." . PHP_EOL;
+            }
+
+            exit(0);
+
+        case 'seed':
+            $runner->seed();
+            echo "Database seeded." . PHP_EOL;
+            exit(0);
+
+        case 'help':
+        default:
+            echo "Usage:" . PHP_EOL;
+            echo "  php bin/console migrate [--seed]" . PHP_EOL;
+            echo "  php bin/console migrate:fresh [--seed]" . PHP_EOL;
+            echo "  php bin/console seed" . PHP_EOL;
+            exit($command === 'help' ? 0 : 1);
+    }
+} catch (Throwable $exception) {
+    fwrite(STDERR, '[error] ' . $exception->getMessage() . PHP_EOL);
+    exit(1);
+}

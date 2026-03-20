@@ -8,11 +8,13 @@ Minimal, production-minded MVC scaffold for native PHP 8.5 with:
 - Redis-backed CSRF token issuance and verification
 - Redis-backed credential-aware rate limiting for login and registration
 - Memcached caching for compiled environment + configuration payloads
+- Standalone Eloquent ORM support (including eager loading via `with(...)`)
+- Built-in migration runner (`migrate`, `migrate:fresh`, optional `--seed`)
 - Auth example with `guest` and `auth` route middleware
 - Reusable page layouts: `app` and `dashboard`
 - Dashboard-protected user CRUD example
 - Reusable request validation layer (`app/Http/Requests` + `Validation`)
-- PHPUnit CRUD unit tests (`tests/Unit/Models/UserRepositoryTest.php`)
+- PHPUnit CRUD unit tests (`tests/Unit/Models/UserModelCrudTest.php`)
 
 ## Requirements
 
@@ -73,3 +75,14 @@ public/
 ```bash
 composer run test:all
 ```
+
+## Database Workflow
+
+```bash
+composer run migrate
+composer run migrate:fresh
+composer run migrate:fresh -- --seed
+composer run migrate:fresh:seed
+```
+
+Some Composer versions require forwarding flags with `--` before script arguments.

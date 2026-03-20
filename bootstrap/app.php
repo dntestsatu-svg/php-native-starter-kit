@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Database\Capsule\Manager as Capsule;
 use Mugiew\StarterKit\Core\Application;
 use Mugiew\StarterKit\Core\Container;
 use Mugiew\StarterKit\Core\Router;
@@ -10,12 +11,13 @@ use Mugiew\StarterKit\Http\Middlewares\AuthMiddleware;
 use Mugiew\StarterKit\Http\Middlewares\CsrfMiddleware;
 use Mugiew\StarterKit\Http\Middlewares\GuestMiddleware;
 use Mugiew\StarterKit\Http\Middlewares\RateLimiterMiddleware;
-use Mugiew\StarterKit\Models\UserRepository;
+use Mugiew\StarterKit\Models\User;
 use Mugiew\StarterKit\Services\Auth\AuthService;
 use Mugiew\StarterKit\Services\Cache\MemcachedStore;
 use Mugiew\StarterKit\Services\Config\ConfigRepository;
 use Mugiew\StarterKit\Services\Config\EnvironmentLoader;
 use Mugiew\StarterKit\Services\Database\DatabaseManager;
+use Mugiew\StarterKit\Services\Database\EloquentBootstrap;
 use Mugiew\StarterKit\Services\Redis\RedisManager;
 use Mugiew\StarterKit\Services\Security\CsrfManager;
 use Mugiew\StarterKit\Services\Session\SessionManager;
@@ -30,20 +32,21 @@ $environmentLoader = new EnvironmentLoader($basePath);
 $environment = $environmentLoader->load();
 $configRepository = new ConfigRepository($environment->env, $environment->cache);
 $config = $configRepository->all();
+$eloquent = (new EloquentBootstrap($config['database']))->boot();
 
 date_default_timezone_set((string) ($config['app']['timezone'] ?? 'UTC'));
 
 $container = new Container();
 $container->instance('env', $environment->env);
 $container->instance('config', $config);
+$container->instance(Capsule::class, $eloquent);
 
 $container->singleton(MemcachedStore::class, static fn (Container $container): ?MemcachedStore => MemcachedStore::create($config['memcached'], true));
 $container->singleton(RedisManager::class, static fn (Container $container): RedisManager => new RedisManager($config['redis']));
 $container->singleton(Client::class, static fn (Container $container): Client => $container->get(RedisManager::class)->client());
 $container->singleton(DatabaseManager::class, static fn (Container $container): DatabaseManager => new DatabaseManager($config['database']));
-$container->singleton(\PDO::class, static fn (Container $container): \PDO => $container->get(DatabaseManager::class)->connection());
-$container->singleton(UserRepository::class, static fn (Container $container): UserRepository => new UserRepository($container->get(\PDO::class)));
-$container->singleton(AuthService::class, static fn (Container $container): AuthService => new AuthService($container->get(UserRepository::class)));
+$container->singleton(User::class, static fn (Container $container): User => new User());
+$container->singleton(AuthService::class, static fn (Container $container): AuthService => new AuthService($container->get(User::class)));
 $container->singleton(View::class, static fn (Container $container): View => new View($basePath . '/app/Views'));
 $container->singleton(SessionManager::class, static fn (Container $container): SessionManager => new SessionManager($container->get(Client::class), $config['session']));
 $container->singleton(CsrfManager::class, static fn (Container $container): CsrfManager => new CsrfManager($container->get(Client::class), $config['security']['csrf']));

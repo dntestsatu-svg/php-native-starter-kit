@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Mugiew\StarterKit\Tests\Unit\Security;
 
+use Illuminate\Database\Capsule\Manager as Capsule;
+use Illuminate\Database\Schema\Blueprint;
 use Mugiew\StarterKit\Core\Application;
 use Mugiew\StarterKit\Core\Container;
 use Mugiew\StarterKit\Core\Request;
@@ -11,17 +13,17 @@ use Mugiew\StarterKit\Core\Response;
 use Mugiew\StarterKit\Core\Router;
 use Mugiew\StarterKit\Core\View;
 use Mugiew\StarterKit\Http\Middlewares\CsrfMiddleware;
-use Mugiew\StarterKit\Models\UserRepository;
+use Mugiew\StarterKit\Models\User;
 use Mugiew\StarterKit\Services\Auth\AuthService;
 use Mugiew\StarterKit\Services\Security\CsrfManager;
 use Mugiew\StarterKit\Tests\Support\InMemoryRedisClient;
-use PDO;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 final class SecurityHardeningTest extends TestCase
 {
-    private UserRepository $users;
+    private Capsule $capsule;
+    private User $users;
     private mixed $previousApp;
 
     public static function setUpBeforeClass(): void
@@ -34,13 +36,26 @@ final class SecurityHardeningTest extends TestCase
         parent::setUp();
 
         $this->previousApp = $GLOBALS['app'] ?? null;
+        $this->capsule = new Capsule();
+        $this->capsule->addConnection([
+            'driver' => 'sqlite',
+            'database' => ':memory:',
+            'prefix' => '',
+        ]);
+        $this->capsule->setAsGlobal();
+        $this->capsule->bootEloquent();
 
-        $pdo = new PDO('sqlite::memory:');
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+        $this->capsule->schema()->create('users', static function (Blueprint $table): void {
+            $table->id();
+            $table->string('username')->unique();
+            $table->string('name');
+            $table->string('email')->unique();
+            $table->string('password');
+            $table->string('role')->default('user');
+            $table->timestamps();
+        });
 
-        $this->users = new UserRepository($pdo);
-        $this->users->ensureTable();
+        $this->users = new User();
     }
 
     protected function tearDown(): void
@@ -62,12 +77,12 @@ final class SecurityHardeningTest extends TestCase
     public function login_is_not_vulnerable_to_basic_sql_injection_payloads(): void
     {
         $password = 'StrongPass123!';
-        $this->users->create(
-            'victim',
-            'Victim User',
-            'victim@example.com',
-            password_hash($password, PASSWORD_DEFAULT)
-        );
+        $this->users->newQuery()->create([
+            'username' => 'victim',
+            'name' => 'Victim User',
+            'email' => 'victim@example.com',
+            'password' => password_hash($password, PASSWORD_DEFAULT),
+        ]);
 
         $auth = new AuthService($this->users);
         $injectionAttempt = $auth->attempt("victim@example.com' OR '1'='1", $password);
@@ -83,21 +98,21 @@ final class SecurityHardeningTest extends TestCase
     {
         $usernamePayload = "attacker'); DROP TABLE users; --";
 
-        $id = $this->users->create(
-            $usernamePayload,
-            'Payload User',
-            'payload@example.com',
-            password_hash('Password123!', PASSWORD_DEFAULT)
-        );
+        $created = $this->users->newQuery()->create([
+            'username' => $usernamePayload,
+            'name' => 'Payload User',
+            'email' => 'payload@example.com',
+            'password' => password_hash('Password123!', PASSWORD_DEFAULT),
+        ]);
 
-        self::assertNotNull($id);
+        self::assertNotNull($created->id);
 
-        $stored = $this->users->findById((int) $id);
-        self::assertIsArray($stored);
-        self::assertSame($usernamePayload, $stored['username']);
+        /** @var User|null $stored */
+        $stored = $this->users->newQuery()->find((int) $created->id);
+        self::assertInstanceOf(User::class, $stored);
+        self::assertSame($usernamePayload, $stored->username);
 
-        $allUsers = $this->users->all();
-        self::assertCount(1, $allUsers);
+        self::assertSame(1, (int) $this->users->newQuery()->count());
     }
 
     #[Test]

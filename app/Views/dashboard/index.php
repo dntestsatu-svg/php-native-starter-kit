@@ -30,13 +30,14 @@
                     <th style="padding:10px;border-bottom:1px solid #e2e8f0;">Username</th>
                     <th style="padding:10px;border-bottom:1px solid #e2e8f0;">Name</th>
                     <th style="padding:10px;border-bottom:1px solid #e2e8f0;">Email</th>
+                    <th style="padding:10px;border-bottom:1px solid #e2e8f0;">Bio</th>
                     <th style="padding:10px;border-bottom:1px solid #e2e8f0;">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($users)): ?>
                     <tr>
-                        <td colspan="5" style="padding:12px;">No users found.</td>
+                        <td colspan="6" style="padding:12px;">No users found.</td>
                     </tr>
                 <?php else: ?>
                     <?php foreach ($users as $listedUser): ?>
@@ -45,6 +46,7 @@
                             <td style="padding:10px;border-bottom:1px solid #f1f5f9;"><?= e((string) ($listedUser['username'] ?? '')); ?></td>
                             <td style="padding:10px;border-bottom:1px solid #f1f5f9;"><?= e((string) ($listedUser['name'] ?? '')); ?></td>
                             <td style="padding:10px;border-bottom:1px solid #f1f5f9;"><?= e((string) ($listedUser['email'] ?? '')); ?></td>
+                            <td style="padding:10px;border-bottom:1px solid #f1f5f9;"><?= e((string) ($listedUser['profile']['bio'] ?? '-')); ?></td>
                             <td style="padding:10px;border-bottom:1px solid #f1f5f9;">
                                 <a href="/dashboard/users/edit?user_id=<?= e((string) ($listedUser['id'] ?? '')); ?>">Edit</a>
                                 <form method="POST" action="/dashboard/users/delete" style="display:inline-block;margin-left:8px;">

@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Mugiew\StarterKit\Services\Auth;
 
-use Mugiew\StarterKit\Models\UserRepository;
+use Illuminate\Database\QueryException;
+use Mugiew\StarterKit\Models\User;
 
 final class AuthService
 {
@@ -17,7 +18,7 @@ final class AuthService
     private bool $userResolved = false;
 
     public function __construct(
-        private readonly UserRepository $users,
+        private readonly User $users,
     ) {}
 
     public function check(): bool
@@ -52,7 +53,8 @@ final class AuthService
             return null;
         }
 
-        $this->resolvedUser = $this->users->findById($id);
+        $user = $this->users->newQuery()->find($id);
+        $this->resolvedUser = $user?->toArray();
         $this->userResolved = true;
 
         if ($this->resolvedUser === null) {
@@ -67,14 +69,22 @@ final class AuthService
      */
     public function register(string $username, string $name, string $email, string $password): ?array
     {
-        $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-        $id = $this->users->create(strtolower($username), ucwords($name), strtolower($email), $hashedPassword);
+        try {
+            $user = $this->users->newQuery()->create([
+                'username' => strtolower($username),
+                'name' => ucwords($name),
+                'email' => strtolower($email),
+                'password' => password_hash($password, PASSWORD_DEFAULT),
+            ]);
+        } catch (QueryException $exception) {
+            if ($this->isUniqueConstraintViolation($exception)) {
+                return null;
+            }
 
-        if ($id === null) {
-            return null;
+            throw $exception;
         }
 
-        return $this->users->findById($id);
+        return $user->toArray();
     }
 
     /**
@@ -82,17 +92,20 @@ final class AuthService
      */
     public function attempt(string $email, string $password): ?array
     {
-        $user = $this->users->findByEmail(strtolower($email));
+        /** @var User|null $user */
+        $user = $this->users->newQuery()
+            ->where('email', strtolower($email))
+            ->first();
 
         if ($user === null) {
             return null;
         }
 
-        if (!password_verify($password, (string) $user['password'])) {
+        if (!password_verify($password, (string) $user->getAttribute('password'))) {
             return null;
         }
 
-        return $user;
+        return $user->toArray();
     }
 
     /**
@@ -112,5 +125,10 @@ final class AuthService
         session_regenerate_id(true);
         $this->resolvedUser = null;
         $this->userResolved = true;
+    }
+
+    private function isUniqueConstraintViolation(QueryException $exception): bool
+    {
+        return (string) $exception->getCode() === '23000';
     }
 }
