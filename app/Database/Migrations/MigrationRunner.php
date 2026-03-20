@@ -5,10 +5,8 @@ declare(strict_types=1);
 namespace Mugiew\StarterKit\Database\Migrations;
 
 use Illuminate\Database\Capsule\Manager as Capsule;
-use Illuminate\Database\Connection;
 use Mugiew\StarterKit\Database\Seeders\SeederContract;
 use RuntimeException;
-use Throwable;
 
 final class MigrationRunner
 {
@@ -44,14 +42,11 @@ final class MigrationRunner
         $batch = $this->currentBatch() + 1;
         $migrated = [];
         $schema = $this->capsule->schema();
-        $connection = $this->connection();
 
         foreach ($pending as $name => $filePath) {
             $migration = $this->loadMigration($filePath);
 
-            $connection->transaction(function () use ($migration, $schema): void {
-                $migration->up($schema, $this->capsule);
-            });
+            $migration->up($schema, $this->capsule);
 
             $this->capsule->table('migrations')->insert([
                 'migration' => $name,
@@ -192,17 +187,5 @@ final class MigrationRunner
             $filePath,
             MigrationContract::class
         ));
-    }
-
-    private function connection(): Connection
-    {
-        try {
-            /** @var Connection $connection */
-            $connection = $this->capsule->getConnection();
-
-            return $connection;
-        } catch (Throwable $exception) {
-            throw new RuntimeException('Unable to access database connection for migrations.', previous: $exception);
-        }
     }
 }
