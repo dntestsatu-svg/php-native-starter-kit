@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Mugiew\StarterKit\Core\Application;
 use Mugiew\StarterKit\Services\Cache\MemcachedStore;
+use Mugiew\StarterKit\Services\Auth\AuthService;
 use Mugiew\StarterKit\Services\Security\CsrfManager;
 
 if (!function_exists('app')) {
@@ -111,5 +112,51 @@ if (!function_exists('cache_remember')) {
         }
 
         return $cache->remember($key, $callback, $ttl);
+    }
+}
+
+if (!function_exists('auth')) {
+    function auth(): AuthService
+    {
+        /** @var AuthService $auth */
+        $auth = app(AuthService::class);
+        return $auth;
+    }
+}
+
+if (!function_exists('auth_check')) {
+    function auth_check(): bool
+    {
+        return auth()->check();
+    }
+}
+
+if (!function_exists('auth_user')) {
+    function auth_user(): ?array
+    {
+        return auth()->user();
+    }
+}
+
+if (!function_exists('flash')) {
+    function flash(string $key, ?string $message = null): ?string
+    {
+        if (!isset($_SESSION['_flash']) || !is_array($_SESSION['_flash'])) {
+            $_SESSION['_flash'] = [];
+        }
+
+        if ($message !== null) {
+            $_SESSION['_flash'][$key] = $message;
+            return null;
+        }
+
+        if (!array_key_exists($key, $_SESSION['_flash'])) {
+            return null;
+        }
+
+        $value = $_SESSION['_flash'][$key];
+        unset($_SESSION['_flash'][$key]);
+
+        return is_string($value) ? $value : null;
     }
 }

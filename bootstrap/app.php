@@ -6,7 +6,11 @@ use Mugiew\StarterKit\Core\Application;
 use Mugiew\StarterKit\Core\Container;
 use Mugiew\StarterKit\Core\Router;
 use Mugiew\StarterKit\Core\View;
+use Mugiew\StarterKit\Http\Middlewares\AuthMiddleware;
 use Mugiew\StarterKit\Http\Middlewares\CsrfMiddleware;
+use Mugiew\StarterKit\Http\Middlewares\GuestMiddleware;
+use Mugiew\StarterKit\Models\UserRepository;
+use Mugiew\StarterKit\Services\Auth\AuthService;
 use Mugiew\StarterKit\Services\Cache\MemcachedStore;
 use Mugiew\StarterKit\Services\Config\ConfigRepository;
 use Mugiew\StarterKit\Services\Config\EnvironmentLoader;
@@ -37,9 +41,13 @@ $container->singleton(RedisManager::class, static fn (Container $container): Red
 $container->singleton(Client::class, static fn (Container $container): Client => $container->get(RedisManager::class)->client());
 $container->singleton(DatabaseManager::class, static fn (Container $container): DatabaseManager => new DatabaseManager($config['database']));
 $container->singleton(\PDO::class, static fn (Container $container): \PDO => $container->get(DatabaseManager::class)->connection());
+$container->singleton(UserRepository::class, static fn (Container $container): UserRepository => new UserRepository($container->get(\PDO::class)));
+$container->singleton(AuthService::class, static fn (Container $container): AuthService => new AuthService($container->get(UserRepository::class)));
 $container->singleton(View::class, static fn (Container $container): View => new View($basePath . '/app/Views'));
 $container->singleton(SessionManager::class, static fn (Container $container): SessionManager => new SessionManager($container->get(Client::class), $config['session']));
 $container->singleton(CsrfManager::class, static fn (Container $container): CsrfManager => new CsrfManager($container->get(Client::class), $config['security']['csrf']));
+$container->singleton(AuthMiddleware::class, static fn (Container $container): AuthMiddleware => new AuthMiddleware($container->get(AuthService::class)));
+$container->singleton(GuestMiddleware::class, static fn (Container $container): GuestMiddleware => new GuestMiddleware($container->get(AuthService::class)));
 $container->singleton(CsrfMiddleware::class, static fn (Container $container): CsrfMiddleware => new CsrfMiddleware(
     $container->get(CsrfManager::class),
     $container->get(View::class),

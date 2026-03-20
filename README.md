@@ -7,6 +7,9 @@ Minimal, production-minded MVC scaffold for native PHP 8.5 with:
 - Redis-backed sessions using `predis/predis`
 - Redis-backed CSRF token issuance and verification
 - Memcached caching for compiled environment + configuration payloads
+- Auth example with `guest` and `auth` route middleware
+- Reusable page layouts: `app` and `dashboard`
+- Dashboard-protected user CRUD example
 
 ## Requirements
 
@@ -22,6 +25,18 @@ Minimal, production-minded MVC scaffold for native PHP 8.5 with:
 2. Set MySQL, Redis, and Memcached connection details in `.env`.
 3. Start your web server with document root at `public/`.
 4. Open `/` for the demo page and `/health` for a JSON health check.
+
+## Auth Example Routes
+
+- Guest-only:
+  - `GET /login`, `POST /login`
+  - `GET /register`, `POST /register`
+- Auth-only:
+  - `GET /dashboard`
+  - `GET /dashboard/users/create`, `POST /dashboard/users`
+  - `GET /dashboard/users/edit`, `POST /dashboard/users/update`
+  - `POST /dashboard/users/delete`
+  - `POST /logout`
 
 ## Project Structure
 

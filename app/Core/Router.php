@@ -12,74 +12,109 @@ use Throwable;
 final class Router
 {
     /**
-     * @var array<string, array<string, callable|array{0: class-string, 1: string}>>
+     * @var array<string, array<string, array{
+     *     action: callable|array{0: class-string, 1: string},
+     *     middleware: array<int, MiddlewareInterface|class-string<MiddlewareInterface>>
+     * }>>
      */
     private array $routes = [];
 
     /**
      * @param callable|array{0: class-string, 1: string} $action
+     * @param array<int, MiddlewareInterface|class-string<MiddlewareInterface>> $middlewares
      */
-    public function add(string $method, string $uri, callable|array $action): self
+    public function add(string $method, string $uri, callable|array $action, array $middlewares = []): self
     {
         $method = strtoupper($method);
         $uri = $this->normalizePath($uri);
-        $this->routes[$method][$uri] = $action;
+        $this->routes[$method][$uri] = [
+            'action' => $action,
+            'middleware' => $middlewares,
+        ];
 
         return $this;
     }
 
     /**
      * @param callable|array{0: class-string, 1: string} $action
+     * @param array<int, MiddlewareInterface|class-string<MiddlewareInterface>> $middlewares
      */
-    public function get(string $uri, callable|array $action): self
+    public function get(string $uri, callable|array $action, array $middlewares = []): self
     {
-        return $this->add('GET', $uri, $action);
+        return $this->add('GET', $uri, $action, $middlewares);
     }
 
     /**
      * @param callable|array{0: class-string, 1: string} $action
+     * @param array<int, MiddlewareInterface|class-string<MiddlewareInterface>> $middlewares
      */
-    public function post(string $uri, callable|array $action): self
+    public function post(string $uri, callable|array $action, array $middlewares = []): self
     {
-        return $this->add('POST', $uri, $action);
+        return $this->add('POST', $uri, $action, $middlewares);
     }
 
     /**
      * @param callable|array{0: class-string, 1: string} $action
+     * @param array<int, MiddlewareInterface|class-string<MiddlewareInterface>> $middlewares
      */
-    public function put(string $uri, callable|array $action): self
+    public function put(string $uri, callable|array $action, array $middlewares = []): self
     {
-        return $this->add('PUT', $uri, $action);
+        return $this->add('PUT', $uri, $action, $middlewares);
     }
 
     /**
      * @param callable|array{0: class-string, 1: string} $action
+     * @param array<int, MiddlewareInterface|class-string<MiddlewareInterface>> $middlewares
      */
-    public function patch(string $uri, callable|array $action): self
+    public function patch(string $uri, callable|array $action, array $middlewares = []): self
     {
-        return $this->add('PATCH', $uri, $action);
+        return $this->add('PATCH', $uri, $action, $middlewares);
     }
 
     /**
      * @param callable|array{0: class-string, 1: string} $action
+     * @param array<int, MiddlewareInterface|class-string<MiddlewareInterface>> $middlewares
      */
-    public function delete(string $uri, callable|array $action): self
+    public function delete(string $uri, callable|array $action, array $middlewares = []): self
     {
-        return $this->add('DELETE', $uri, $action);
+        return $this->add('DELETE', $uri, $action, $middlewares);
     }
 
     public function dispatch(Request $request, Container $container): Response
     {
         $method = $request->method();
         $path = $request->path();
-        $action = $this->routes[$method][$path] ?? null;
+        $route = $this->routes[$method][$path] ?? null;
 
-        if ($action === null) {
+        if ($route === null) {
             return $this->notFound($container);
         }
 
         try {
-            $result = $this->invokeAction($action, $request, $container);
+            $runner = fn (Request $resolvedRequest): Response => $this->normalizeResponse(
+                $this->invokeAction($route['action'], $resolvedRequest, $container)
+            );
+
+            $pipeline = array_reduce(
+                array_reverse($route['middleware']),
+                /**
+                 * @param callable(Request): Response $next
+                 * @param MiddlewareInterface|class-string<MiddlewareInterface> $middlewareEntry
+                 * @return callable(Request): Response
+                 */
+                static function (callable $next, MiddlewareInterface|string $middlewareEntry) use ($container): callable {
+                    $middleware = is_string($middlewareEntry) ? $container->get($middlewareEntry) : $middlewareEntry;
+
+                    if (!$middleware instanceof MiddlewareInterface) {
+                        throw new RuntimeException('Route middleware must implement MiddlewareInterface.');
+                    }
+
+                    return static fn (Request $resolvedRequest): Response => $middleware->process($resolvedRequest, $next);
+                },
+                $runner
+            );
+
+            return $pipeline($request);
         } catch (Throwable $exception) {
             $message = 'Internal Server Error';
 
@@ -98,16 +133,6 @@ final class Router
                 'message' => $message,
             ], 500);
         }
-
-        if ($result instanceof Response) {
-            return $result;
-        }
-
-        if (is_array($result)) {
-            return Response::json($result);
-        }
-
-        return Response::html((string) $result);
     }
 
     private function normalizePath(string $path): string
@@ -174,5 +199,18 @@ final class Router
         }
 
         return Response::html('404 Not Found', 404);
+    }
+
+    private function normalizeResponse(mixed $result): Response
+    {
+        if ($result instanceof Response) {
+            return $result;
+        }
+
+        if (is_array($result)) {
+            return Response::json($result);
+        }
+
+        return Response::html((string) $result);
     }
 }

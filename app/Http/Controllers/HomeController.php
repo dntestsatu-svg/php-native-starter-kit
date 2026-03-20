@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Mugiew\StarterKit\Http\Controllers;
 
-use Mugiew\StarterKit\Core\Request;
 use Mugiew\StarterKit\Core\Response;
+use Mugiew\StarterKit\Services\Auth\AuthService;
 use Mugiew\StarterKit\Services\Database\DatabaseManager;
 use Throwable;
 
@@ -15,29 +15,16 @@ final class HomeController extends Controller
         \Mugiew\StarterKit\Core\View $view,
         \Mugiew\StarterKit\Services\Security\CsrfManager $csrf,
         private readonly DatabaseManager $database,
+        private readonly AuthService $auth,
     ) {
         parent::__construct($view, $csrf);
     }
 
     public function index(): Response
     {
-        return $this->render('home');
-    }
-
-    public function submit(Request $request): Response
-    {
-        $name = trim((string) $request->input('name', ''));
-
-        if ($name === '') {
-            return $this->render('home', [
-                'error' => 'Please enter your name before submitting.',
-            ], 422);
-        }
-
-        return $this->render('home', [
-            'name' => $name,
-            'success' => sprintf('Hello %s, the MVC starter kit is working with CSRF protection.', $name),
-        ]);
+        return $this->auth->check()
+            ? $this->redirect('/dashboard')
+            : $this->render('home');
     }
 
     public function health(): Response
