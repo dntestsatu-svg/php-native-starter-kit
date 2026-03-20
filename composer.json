@@ -1,0 +1,29 @@
+{
+    "name": "mugiew/starter-kit",
+    "description": "Minimal Starterkit MVC Architecture for PHP Native",
+    "type": "project",
+    "license": "proprietary",
+    "require": {
+        "php": "^8.5",
+        "ext-memcached": "*",
+        "ext-pdo": "*",
+        "ext-session": "*",
+        "predis/predis": "^3.4",
+        "guzzlehttp/guzzle": "^7.10",
+        "vlucas/phpdotenv": "^5.6"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^13.0",
+        "fakerphp/faker": "^1.24"
+    },
+    "autoload": {
+        "psr-4": {
+            "Mugiew\\StarterKit\\": "app/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Mugiew Galeano"
+        }
+    ]
+}
