@@ -1,4 +1,4 @@
-name: PHP Composer
+name: PHP CI
 
 on:
   push:
@@ -11,26 +11,86 @@ permissions:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: native
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+
+      memcached:
+        image: memcached:latest
+        ports:
+          - 11211:11211
 
     steps:
     - uses: actions/checkout@v4
 
-    - name: Validate composer.json and composer.lock
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.4'
+        extensions: redis, memcached, pdo_mysql
+        coverage: none
+
+    - name: Wait for MySQL
+      run: |
+        until mysqladmin ping -h 127.0.0.1 -uroot -proot --silent; do
+          sleep 1
+        done
+
+    - name: Copy .env
+      run: cp .env.example .env || true
+
+    - name: Inject CI Environment
+      run: |
+        echo "APP_ENV=testing" >> .env
+        echo "APP_DEBUG=true" >> .env
+
+        echo "DB_CONNECTION=mysql" >> .env
+        echo "DB_HOST=127.0.0.1" >> .env
+        echo "DB_PORT=3306" >> .env
+        echo "DB_DATABASE=native" >> .env
+        echo "DB_USERNAME=root" >> .env
+        echo "DB_PASSWORD=root" >> .env
+
+        echo "SESSION_DRIVER=redis" >> .env
+        echo "REDIS_HOST=127.0.0.1" >> .env
+        echo "REDIS_PORT=6379" >> .env
+
+        echo "CACHE_STORE=memcached" >> .env
+        echo "MEMCACHED_HOST=127.0.0.1" >> .env
+        echo "MEMCACHED_PORT=11211" >> .env
+
+    - name: Validate composer.json
       run: composer validate --strict
 
-    - name: Cache Composer packages
-      id: composer-cache
+    - name: Cache Composer
       uses: actions/cache@v3
       with:
         path: vendor
         key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-php-
 
     - name: Install dependencies
       run: composer install --prefer-dist --no-progress
 
-    - name: Run test all
+    - name: Run migrations (if any)
+      run: |
+        php artisan migrate || true
+
+    - name: Run tests
       run: composer run test:all
