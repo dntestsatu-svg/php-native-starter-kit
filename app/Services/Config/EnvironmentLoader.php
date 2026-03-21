@@ -78,6 +78,8 @@ final class EnvironmentLoader
             $snapshot[$key] = (string) $value;
         }
 
+        ksort($snapshot);
+
         return $snapshot;
     }
 
@@ -92,6 +94,11 @@ final class EnvironmentLoader
             }
 
             $scalar = is_scalar($value) ? (string) $value : '';
+
+            if (($_ENV[$key] ?? null) === $scalar && ($_SERVER[$key] ?? null) === $scalar) {
+                continue;
+            }
+
             $_ENV[$key] = $scalar;
             $_SERVER[$key] = $scalar;
             putenv(sprintf('%s=%s', $key, $scalar));

@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace Mugiew\StarterKit\Http\Requests\Auth;
 
+use Mugiew\StarterKit\Http\Requests\Concerns\NormalizesUserInput;
 use Mugiew\StarterKit\Http\Requests\FormRequest;
 use Mugiew\StarterKit\Http\Requests\Validation\UserValidationRules;
 
 final class RegisterRequest extends FormRequest
 {
+    use NormalizesUserInput;
+
     public static function redirectPath(): string
     {
         return '/register';
@@ -24,10 +27,6 @@ final class RegisterRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $this->merge([
-            'username' => strtolower(trim((string) $this->input('username', ''))),
-            'name' => trim((string) $this->input('name', '')),
-            'email' => strtolower(trim((string) $this->input('email', ''))),
-        ]);
+        $this->normalizeUserCoreFields();
     }
 }

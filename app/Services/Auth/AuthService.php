@@ -6,6 +6,7 @@ namespace Mugiew\StarterKit\Services\Auth;
 
 use Illuminate\Database\QueryException;
 use Mugiew\StarterKit\Models\User;
+use Mugiew\StarterKit\Support\Database\QueryExceptionInspector;
 
 final class AuthService
 {
@@ -77,7 +78,7 @@ final class AuthService
                 'password' => password_hash($password, PASSWORD_DEFAULT),
             ]);
         } catch (QueryException $exception) {
-            if ($this->isUniqueConstraintViolation($exception)) {
+            if (QueryExceptionInspector::isUniqueConstraintViolation($exception)) {
                 return null;
             }
 
@@ -125,10 +126,5 @@ final class AuthService
         session_regenerate_id(true);
         $this->resolvedUser = null;
         $this->userResolved = true;
-    }
-
-    private function isUniqueConstraintViolation(QueryException $exception): bool
-    {
-        return (string) $exception->getCode() === '23000';
     }
 }

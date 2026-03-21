@@ -137,6 +137,31 @@ final class RateLimiterMiddlewareTest extends TestCase
         );
     }
 
+    #[Test]
+    public function requests_without_identity_fields_use_session_fingerprint(): void
+    {
+        $request = $this->request('/login', [
+            'password' => 'Password123!',
+        ]);
+
+        $next = static fn (): Response => Response::html('ok', 204);
+
+        $this->setSessionId('rate_limiter_session_a');
+
+        $first = $this->middleware->process($request, $next);
+        $second = $this->middleware->process($request, $next);
+        $third = $this->middleware->process($request, $next);
+
+        self::assertSame(204, $first->status());
+        self::assertSame(204, $second->status());
+        self::assertSame(302, $third->status());
+
+        $this->setSessionId('rate_limiter_session_b');
+        $anotherSessionAttempt = $this->middleware->process($request, $next);
+
+        self::assertSame(204, $anotherSessionAttempt->status());
+    }
+
     /**
      * @param array<string, mixed> $body
      */
@@ -157,5 +182,14 @@ final class RateLimiterMiddlewareTest extends TestCase
     private static function basePath(): string
     {
         return dirname(__DIR__, 4);
+    }
+
+    private function setSessionId(string $id): void
+    {
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
+
+        session_id($id);
     }
 }

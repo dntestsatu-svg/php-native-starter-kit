@@ -116,4 +116,33 @@ final class EloquentWithTest extends TestCase
         self::assertSame('charlie@example.com', $rows[0]['email']);
         self::assertSame('Profile for Charlie', $rows[0]['profile']['bio'] ?? null);
     }
+
+    #[Test]
+    public function dashboard_projection_query_with_profile_columns_executes_without_type_errors(): void
+    {
+        $user = User::query()->create([
+            'username' => 'dashboard_user',
+            'name' => 'Dashboard User',
+            'email' => 'dashboard@example.com',
+            'password' => password_hash('Password123!', PASSWORD_DEFAULT),
+        ]);
+
+        Profile::query()->create([
+            'user_id' => (int) $user->id,
+            'bio' => 'Dashboard bio',
+            'website' => 'https://example.test',
+        ]);
+
+        $rows = User::query()
+            ->select(['id', 'username', 'name', 'email'])
+            ->with(['profile:user_id,bio'])
+            ->orderByDesc('id')
+            ->get()
+            ->map(static fn (User $record): array => $record->toArray())
+            ->all();
+
+        self::assertCount(1, $rows);
+        self::assertSame('dashboard@example.com', $rows[0]['email']);
+        self::assertSame('Dashboard bio', $rows[0]['profile']['bio'] ?? null);
+    }
 }

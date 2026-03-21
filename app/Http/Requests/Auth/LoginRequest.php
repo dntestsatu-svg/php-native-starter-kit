@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace Mugiew\StarterKit\Http\Requests\Auth;
 
 use Mugiew\StarterKit\Http\Requests\FormRequest;
+use Mugiew\StarterKit\Http\Requests\Concerns\NormalizesUserInput;
 
 final class LoginRequest extends FormRequest
 {
+    use NormalizesUserInput;
+
     public static function redirectPath(): string
     {
         return '/login';
@@ -26,8 +29,6 @@ final class LoginRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $this->merge([
-            'email' => strtolower(trim((string) $this->input('email', ''))),
-        ]);
+        $this->normalizeEmailField();
     }
 }

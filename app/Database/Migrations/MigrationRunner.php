@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Mugiew\StarterKit\Database\Migrations;
 
 use Illuminate\Database\Capsule\Manager as Capsule;
+use Illuminate\Database\Connection;
 use Mugiew\StarterKit\Database\Seeders\SeederContract;
 use RuntimeException;
 
@@ -170,8 +171,95 @@ final class MigrationRunner
 
     private function dropAllTables(): void
     {
-        $schema = $this->capsule->schema();
-        $schema->dropAllTables();
+        $connection = $this->capsule->getConnection();
+        $driver = $connection->getDriverName();
+
+        if ($driver === 'mysql') {
+            $this->dropMySqlTables($connection);
+            return;
+        }
+
+        if ($driver === 'sqlite') {
+            $this->dropSqliteTables($connection);
+            return;
+        }
+
+        $this->capsule->schema()->dropAllTables();
+    }
+
+    private function dropMySqlTables(Connection $connection): void
+    {
+        /** @var list<object|array<string, mixed>> $rows */
+        $rows = $connection->select('SHOW FULL TABLES WHERE Table_type = ?', ['BASE TABLE']);
+        $tables = $this->extractTableNames($rows, 'Tables_in_' . $connection->getDatabaseName());
+
+        if ($tables === []) {
+            return;
+        }
+
+        $connection->statement('SET FOREIGN_KEY_CHECKS=0');
+
+        try {
+            $schema = $connection->getSchemaBuilder();
+
+            foreach ($tables as $table) {
+                $schema->dropIfExists($table);
+            }
+        } finally {
+            $connection->statement('SET FOREIGN_KEY_CHECKS=1');
+        }
+    }
+
+    private function dropSqliteTables(Connection $connection): void
+    {
+        /** @var list<object|array<string, mixed>> $rows */
+        $rows = $connection->select(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
+        );
+        $tables = $this->extractTableNames($rows, 'name');
+
+        if ($tables === []) {
+            return;
+        }
+
+        $connection->statement('PRAGMA foreign_keys = OFF');
+
+        try {
+            $schema = $connection->getSchemaBuilder();
+
+            foreach ($tables as $table) {
+                $schema->dropIfExists($table);
+            }
+        } finally {
+            $connection->statement('PRAGMA foreign_keys = ON');
+        }
+    }
+
+    /**
+     * @param list<object|array<string, mixed>> $rows
+     * @return list<string>
+     */
+    private function extractTableNames(array $rows, string $preferredColumn): array
+    {
+        $tables = [];
+
+        foreach ($rows as $row) {
+            $columns = is_array($row) ? $row : get_object_vars($row);
+
+            if ($columns === []) {
+                continue;
+            }
+
+            $rawValue = $columns[$preferredColumn] ?? reset($columns);
+
+            if (!is_string($rawValue) || $rawValue === '') {
+                continue;
+            }
+
+            $tables[] = $rawValue;
+        }
+
+        return array_values(array_unique($tables));
     }
 
     private function loadMigration(string $filePath): MigrationContract

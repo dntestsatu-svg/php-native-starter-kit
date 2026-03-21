@@ -6,6 +6,7 @@ namespace Mugiew\StarterKit\Tests\Unit\Http\Requests;
 
 use Mugiew\StarterKit\Core\Request;
 use Mugiew\StarterKit\Http\Requests\Auth\RegisterRequest;
+use Mugiew\StarterKit\Http\Requests\Dashboard\StoreUserRequest;
 use Mugiew\StarterKit\Http\Requests\Dashboard\UpdateUserRequest;
 use Mugiew\StarterKit\Http\Requests\Validation\RequestValidationException;
 use PHPUnit\Framework\Attributes\Test;
@@ -65,6 +66,33 @@ final class FormRequestValidationTest extends TestCase
 
         self::assertSame(10, $validated['user_id']);
         self::assertNull($validated['password']);
+    }
+
+    #[Test]
+    public function store_user_request_returns_normalized_payload(): void
+    {
+        $request = new Request(
+            method: 'POST',
+            path: '/dashboard/users',
+            query: [],
+            body: [
+                'username' => 'NewUSER',
+                'name' => ' New User ',
+                'email' => 'NEW@EXAMPLE.COM',
+                'password' => 'Password123!',
+                'password_confirmation' => 'Password123!',
+            ],
+            server: [],
+            cookies: [],
+            files: [],
+            headers: [],
+        );
+
+        $validated = StoreUserRequest::fromRequest($request)->validated();
+
+        self::assertSame('newuser', $validated['username']);
+        self::assertSame('New User', $validated['name']);
+        self::assertSame('new@example.com', $validated['email']);
     }
 
     #[Test]

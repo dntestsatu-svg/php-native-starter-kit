@@ -32,14 +32,34 @@ final class ConfigRepository
         $cacheKey = $this->configCacheKey();
 
         if ($this->cache !== null) {
-            $cached = $this->cache->get($cacheKey);
+            /** @var array<string, mixed> $cached */
+            $cached = $this->cache->remember(
+                $cacheKey,
+                fn (): array => $this->compile($memcached),
+                $ttl
+            );
 
-            if (is_array($cached)) {
-                return $cached;
-            }
+            return $cached;
         }
 
-        $compiled = [
+        return $this->compile($memcached);
+    }
+
+    private function configCacheKey(): string
+    {
+        $normalizedEnv = $this->env;
+        ksort($normalizedEnv);
+
+        return 'config:' . hash('sha256', json_encode($normalizedEnv, JSON_THROW_ON_ERROR));
+    }
+
+    /**
+     * @param array<string, mixed> $memcached
+     * @return array<string, mixed>
+     */
+    private function compile(array $memcached): array
+    {
+        return [
             'app' => App::fromEnv($this->env),
             'database' => Database::fromEnv($this->env),
             'redis' => Redis::fromEnv($this->env),
@@ -47,16 +67,5 @@ final class ConfigRepository
             'session' => Session::fromEnv($this->env),
             'security' => Security::fromEnv($this->env),
         ];
-
-        if ($this->cache !== null) {
-            $this->cache->set($cacheKey, $compiled, $ttl);
-        }
-
-        return $compiled;
-    }
-
-    private function configCacheKey(): string
-    {
-        return 'config:' . hash('sha256', json_encode($this->env, JSON_THROW_ON_ERROR));
     }
 }

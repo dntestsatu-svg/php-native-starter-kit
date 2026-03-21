@@ -12,6 +12,7 @@ use Mugiew\StarterKit\Http\Requests\Dashboard\StoreUserRequest;
 use Mugiew\StarterKit\Http\Requests\Dashboard\UpdateUserRequest;
 use Mugiew\StarterKit\Models\User;
 use Mugiew\StarterKit\Services\Auth\AuthService;
+use Mugiew\StarterKit\Support\Database\QueryExceptionInspector;
 
 final class DashboardController extends Controller
 {
@@ -27,7 +28,8 @@ final class DashboardController extends Controller
     public function index(): Response
     {
         $users = $this->users->newQuery()
-            ->with(['profile'])
+            ->select(['id', 'username', 'name', 'email'])
+            ->with(['profile:user_id,bio'])
             ->orderByDesc('id')
             ->get()
             ->map(static fn (User $user): array => $user->toArray())
@@ -63,7 +65,7 @@ final class DashboardController extends Controller
                 'password' => password_hash((string) $payload['password'], PASSWORD_DEFAULT),
             ]);
         } catch (QueryException $exception) {
-            if ($this->isUniqueConstraintViolation($exception)) {
+            if (QueryExceptionInspector::isUniqueConstraintViolation($exception)) {
                 flash('error', 'Username or email is already used by another account.');
                 return $this->redirect('/dashboard/users/create');
             }
@@ -174,10 +176,5 @@ final class DashboardController extends Controller
         flash('success', 'User deleted successfully.');
 
         return $this->redirect('/dashboard');
-    }
-
-    private function isUniqueConstraintViolation(QueryException $exception): bool
-    {
-        return (string) $exception->getCode() === '23000';
     }
 }
